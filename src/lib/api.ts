@@ -226,3 +226,4 @@ export const api = {
       course: { dept, year, semester }
     };
   }
+}
