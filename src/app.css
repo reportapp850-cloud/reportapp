@@ -1,0 +1,122 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+html {
+  @apply dark;
+}
+
+body {
+  @apply bg-gray-900 text-gray-100 min-h-screen;
+  margin: 0;
+}
+
+#app {
+  @apply min-h-screen;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+/* Form styling */
+.form-input {
+  @apply bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400;
+  @apply focus:border-primary-500 focus:ring-primary-500;
+}
+
+.form-select {
+  @apply bg-gray-800 border-gray-600 text-gray-100;
+  @apply focus:border-primary-500 focus:ring-primary-500;
+}
+
+/* Button animations */
+.btn-primary {
+  @apply bg-primary-600 text-white px-6 py-3 rounded-lg font-medium;
+  @apply hover:bg-primary-700 active:bg-primary-800;
+  @apply transition-all duration-200 ease-in-out;
+  @apply hover:scale-105 active:scale-95;
+}
+
+.btn-secondary {
+  @apply bg-gray-700 text-gray-100 px-6 py-3 rounded-lg font-medium;
+  @apply hover:bg-gray-600 active:bg-gray-800;
+  @apply transition-all duration-200 ease-in-out;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white px-6 py-3 rounded-lg font-medium;
+  @apply hover:bg-red-700 active:bg-red-800;
+  @apply transition-all duration-200 ease-in-out;
+}
+
+/* Card styling */
+.card {
+  @apply bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg;
+  @apply transition-transform duration-200 ease-in-out;
+  @apply hover:shadow-xl hover:scale-102;
+}
+
+.stat-card {
+  @apply bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700;
+  @apply rounded-xl p-6 shadow-lg transition-all duration-200;
+  @apply hover:shadow-xl hover:border-primary-500;
+}
+
+/* Loading animation */
+.loading-spinner {
+  @apply animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500;
+}
+
+/* Toast notifications */
+.toast {
+  @apply fixed top-4 right-4 z-50 max-w-sm w-full;
+  @apply bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg;
+  @apply transform transition-all duration-300 ease-in-out;
+}
+
+.toast.success {
+  @apply border-green-500 bg-green-900/20;
+}
+
+.toast.error {
+  @apply border-red-500 bg-red-900/20;
+}
+
+/* Responsive grid */
+.responsive-grid {
+  @apply grid gap-6;
+  @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+}
+
+/* Page transitions */
+.page-transition {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+.fade-enter {
+  @apply opacity-0 translate-y-4;
+}
+
+.fade-enter-active {
+  @apply opacity-100 translate-y-0;
+}
