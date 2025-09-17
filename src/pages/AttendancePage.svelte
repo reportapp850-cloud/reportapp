@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { currentUser, selectedCourse } from '../lib/stores';
+  import { selectedCourse } from '../lib/stores';
   import { api } from '../lib/api';
   import PageHeader from '../lib/components/PageHeader.svelte';
   import LoadingSpinner from '../lib/components/LoadingSpinner.svelte';
