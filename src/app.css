@@ -72,7 +72,7 @@ body {
 .card {
   @apply bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg;
   @apply transition-transform duration-200 ease-in-out;
-  @apply hover:shadow-xl hover:scale-102;
+  @apply hover:shadow-xl hover:scale-105;
 }
 
 .stat-card {
