@@ -1,145 +1,219 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { selectedCourse } from '../lib/stores';
-  import { api } from '../lib/api';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import { selectedCourse, addToast } from '../lib/stores.js';
+  import { api } from '../lib/api.js';
   import PageHeader from '../lib/components/PageHeader.svelte';
   import LoadingSpinner from '../lib/components/LoadingSpinner.svelte';
-  import Toast from '../lib/components/Toast.svelte';
+  
+  const dispatch = createEventDispatcher();
 
   let students: any[] = [];
-  let attendance: { [key: string]: boolean } = {};
+  let attendanceMap: { [key: string]: 'present' | 'absent' | null } = {};
   let loading = true;
   let saving = false;
-  let toast = { show: false, message: '', type: 'success' as 'success' | 'error' };
+  let selectedDate = new Date().toISOString().split('T')[0];
+  
+  $: course = $selectedCourse;
 
   onMount(async () => {
-    if (!$selectedCourse) {
-      window.location.hash = '#/courses';
+    if (!course) {
       return;
     }
 
+    await loadAttendanceData();
+  });
+
+  async function loadAttendanceData() {
+    if (!course) return;
+    
+    loading = true;
     try {
-      const response = await api.get(`/students?courseId=${$selectedCourse.id}`);
-      students = response.students || [];
+      students = await api.getAttendance(course.department, course.year, course.semester, selectedDate);
       
-      // Initialize attendance state
+      // Initialize attendance map
+      attendanceMap = {};
       students.forEach(student => {
-        attendance[student.id] = false;
+        attendanceMap[student.id] = student.status || null;
       });
-    } catch (error) {
-      console.error('Failed to load students:', error);
-      showToast('Failed to load students', 'error');
+    } catch (error: any) {
+      addToast(error.message || 'Failed to load attendance data', 'error');
     } finally {
       loading = false;
     }
-  });
+  }
 
-  function toggleAttendance(studentId: string) {
-    attendance[studentId] = !attendance[studentId];
+  function setAttendance(studentId: string, status: 'present' | 'absent') {
+    attendanceMap[studentId] = status;
+  }
+  
+  async function handleDateChange() {
+    await loadAttendanceData();
   }
 
   async function saveAttendance() {
-    if (!$selectedCourse) return;
+    if (!course) return;
 
     saving = true;
     try {
-      const attendanceData = Object.entries(attendance)
-        .filter(([_, present]) => present)
-        .map(([studentId]) => ({ studentId, courseId: $selectedCourse.id }));
+      const attendanceRecords = Object.entries(attendanceMap)
+        .filter(([_, status]) => status !== null)
+        .map(([studentId, status]) => ({
+          student_id: studentId,
+          attendance_date: selectedDate,
+          status
+        }));
 
-      await api.post('/attendance', { attendance: attendanceData });
-      showToast('Attendance saved successfully!', 'success');
+      await api.markAttendance(attendanceRecords);
+      addToast('Attendance saved successfully!', 'success');
     } catch (error) {
-      console.error('Failed to save attendance:', error);
-      showToast('Failed to save attendance', 'error');
+      addToast('Failed to save attendance', 'error');
     } finally {
       saving = false;
     }
   }
 
-  function showToast(message: string, type: 'success' | 'error') {
-    toast = { show: true, message, type };
-    setTimeout(() => {
-      toast.show = false;
-    }, 3000);
+  function handleBack() {
+    dispatch('back');
   }
 </script>
 
-<div class="min-h-screen bg-gray-50">
-  <PageHeader title="Take Attendance" />
+<div class="min-h-screen p-6">
+  <div class="max-w-4xl mx-auto">
+    <PageHeader
+      title="Mark Attendance"
+      subtitle="{course?.department} • {course?.year} • {course?.semester}"
+      showBackButton
+      on:back={handleBack}
+    />
   
-  <div class="max-w-4xl mx-auto px-4 py-8">
-    {#if $selectedCourse}
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 class="text-xl font-semibold text-gray-900 mb-2">
-          {$selectedCourse.name}
-        </h2>
-        <p class="text-gray-600">
-          {$selectedCourse.code} • {new Date().toLocaleDateString()}
-        </p>
+    <!-- Date Selection -->
+    <div class="card mb-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-100">Select Date</h3>
+        <input
+          type="date"
+          bind:value={selectedDate}
+          on:change={handleDateChange}
+          class="form-input rounded-lg"
+        />
       </div>
-    {/if}
+    </div>
 
     {#if loading}
       <div class="flex justify-center py-12">
-        <LoadingSpinner />
+        <LoadingSpinner size="lg" text="Loading students..." />
       </div>
     {:else if students.length === 0}
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+      <div class="card text-center py-12">
         <div class="text-gray-400 mb-4">
           <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
         </div>
-        <h3 class="text-lg font-medium text-gray-900 mb-2">No Students Found</h3>
-        <p class="text-gray-600 mb-4">
+        <h3 class="text-lg font-medium text-gray-100 mb-2">No Students Found</h3>
+        <p class="text-gray-400 mb-4">
           There are no students enrolled in this course yet.
         </p>
-        <a 
-          href="#/add-student" 
-          class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+        <button
+          on:click={() => dispatch('addStudent')}
+          class="btn-primary"
         >
           Add Students
-        </a>
+        </button>
       </div>
     {:else}
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div class="p-6 border-b border-gray-200">
-          <h3 class="text-lg font-medium text-gray-900">
+      <div class="card">
+        <div class="mb-6">
+          <h3 class="text-lg font-medium text-gray-100">
             Student List ({students.length} students)
           </h3>
+          <p class="text-gray-400 text-sm mt-1">
+            Date: {new Date(selectedDate).toLocaleDateString()}
+          </p>
         </div>
         
-        <div class="divide-y divide-gray-200">
+        <div class="space-y-3">
           {#each students as student}
-            <div class="p-4 hover:bg-gray-50 transition-colors">
-              <label class="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  bind:checked={attendance[student.id]}
-                  class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                />
-                <div class="ml-4 flex-1">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <p class="text-sm font-medium text-gray-900">
-                        {student.name}
-                      </p>
-                      <p class="text-sm text-gray-500">
-                        ID: {student.studentId}
-                      </p>
-                    </div>
-                    <div class="text-right">
-                      {#if attendance[student.id]}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Present
-                        </span>
-                      {:else}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          Absent
-                        </span>
-                      {/if}
-                    </div>
+            <div class="bg-gray-700/50 rounded-lg p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-gray-100">
+                    {student.full_name}
+                  </p>
+                  <p class="text-sm text-gray-400">
+                    {student.registration_number}
+                  </p>
+                </div>
+                
+                <div class="flex space-x-2">
+                  <button
+                    on:click={() => setAttendance(student.id, 'present')}
+                    class="px-3 py-1 rounded-lg text-sm font-medium transition-colors
+                           {attendanceMap[student.id] === 'present' 
+                             ? 'bg-green-600 text-white' 
+                             : 'bg-gray-600 text-gray-300 hover:bg-green-600 hover:text-white'}"
+                  >
+                    Present
+                  </button>
+                  
+                  <button
+                    on:click={() => setAttendance(student.id, 'absent')}
+                    class="px-3 py-1 rounded-lg text-sm font-medium transition-colors
+                           {attendanceMap[student.id] === 'absent' 
+                             ? 'bg-red-600 text-white' 
+                             : 'bg-gray-600 text-gray-300 hover:bg-red-600 hover:text-white'}"
+                  >
+                    Absent
+                  </button>
+                  
+                  {#if attendanceMap[student.id]}
+                    <button
+                      on:click={() => setAttendance(student.id, null)}
+                      class="px-3 py-1 rounded-lg text-sm font-medium bg-gray-600 text-gray-300 hover:bg-gray-500"
+                    >
+                      Clear
+                    </button>
+                  {/if}
+                </div>
+              </div>
+            </div>
+          {/each}
+        </div>
+        
+        <div class="mt-6 pt-6 border-t border-gray-700">
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-400">
+              {Object.values(attendanceMap).filter(status => status === 'present').length} present, 
+              {Object.values(attendanceMap).filter(status => status === 'absent').length} absent,
+              {Object.values(attendanceMap).filter(status => status === null).length} unmarked
+            </div>
+            
+            <div class="flex space-x-3">
+              <button
+                on:click={handleBack}
+                class="btn-secondary"
+              >
+                Cancel
+              </button>
+              
+              <button
+                on:click={saveAttendance}
+                disabled={saving}
+                class="btn-primary"
+              >
+                {#if saving}
+                  <LoadingSpinner size="sm" />
+                {:else}
+                  Save Attendance
+                {/if}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
+  </div>
+</div>
                   </div>
                 </div>
               </label>

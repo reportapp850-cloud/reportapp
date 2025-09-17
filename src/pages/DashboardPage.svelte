@@ -75,7 +75,7 @@
           </p>
         {/if}
         {#if user}
-          <p class="text-primary-400 text-sm mt-1">Welcome back, {user.fullName}</p>
+          <p class="text-primary-400 text-sm mt-1">Welcome back, {user.full_name}</p>
         {/if}
       </div>
       

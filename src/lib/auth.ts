@@ -1,9 +1,10 @@
 import { writable } from 'svelte/store';
+import { supabase } from './supabase.js';
 
 interface User {
-  id: number;
+  id: string;
   email: string;
-  fullName: string;
+  full_name: string;
 }
 
 interface AuthState {
@@ -18,35 +19,35 @@ export const authStore = writable<AuthState>({
   loading: false
 });
 
-const API_BASE = 'http://localhost:3001/api';
-
 export const authService = {
   async login(email: string, password: string) {
     authStore.update(state => ({ ...state, loading: true }));
     
     try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+      if (error) {
+        throw new Error(error.message);
       }
 
-      localStorage.setItem('token', data.token);
-      authStore.set({
-        user: data.user,
-        token: data.token,
-        loading: false
-      });
-
-      return data;
+      if (data.user && data.session) {
+        const user = {
+          id: data.user.id,
+          email: data.user.email!,
+          full_name: data.user.user_metadata?.full_name || data.user.email!
+        };
+        
+        authStore.set({
+          user,
+          token: data.session.access_token,
+          loading: false
+        });
+        
+        return { user, token: data.session.access_token };
+      }
     } catch (error) {
       authStore.update(state => ({ ...state, loading: false }));
       throw error;
@@ -57,28 +58,35 @@ export const authService = {
     authStore.update(state => ({ ...state, loading: true }));
     
     try {
-      const response = await fetch(`${API_BASE}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password, fullName })
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName
+          }
+        }
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
+      if (error) {
+        throw new Error(error.message);
       }
 
-      localStorage.setItem('token', data.token);
-      authStore.set({
-        user: data.user,
-        token: data.token,
-        loading: false
-      });
-
-      return data;
+      if (data.user && data.session) {
+        const user = {
+          id: data.user.id,
+          email: data.user.email!,
+          full_name: fullName
+        };
+        
+        authStore.set({
+          user,
+          token: data.session.access_token,
+          loading: false
+        });
+        
+        return { user, token: data.session.access_token };
+      }
     } catch (error) {
       authStore.update(state => ({ ...state, loading: false }));
       throw error;
@@ -86,7 +94,7 @@ export const authService = {
   },
 
   logout() {
-    localStorage.removeItem('token');
+    supabase.auth.signOut();
     authStore.set({
       user: null,
       token: null,
@@ -95,19 +103,33 @@ export const authService = {
   },
 
   async getAuthHeaders() {
-    const token = localStorage.getItem('token');
+    const { data: { session } } = await supabase.auth.getSession();
     return {
-      'Authorization': token ? `Bearer ${token}` : '',
+      'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
       'Content-Type': 'application/json'
     };
   }
 };
 
-// Initialize auth state from localStorage
-if (typeof window !== 'undefined') {
-  const token = localStorage.getItem('token');
-  if (token) {
-    // You might want to verify the token here
-    authStore.update(state => ({ ...state, token }));
+// Listen to auth changes
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session?.user) {
+    const user = {
+      id: session.user.id,
+      email: session.user.email!,
+      full_name: session.user.user_metadata?.full_name || session.user.email!
+    };
+    
+    authStore.set({
+      user,
+      token: session.access_token,
+      loading: false
+    });
+  } else if (event === 'SIGNED_OUT') {
+    authStore.set({
+      user: null,
+      token: null,
+      loading: false
+    });
   }
-}
+});

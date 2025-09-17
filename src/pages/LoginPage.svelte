@@ -7,8 +7,8 @@
   const dispatch = createEventDispatcher();
   
   let isLogin = true;
-  let email = 'demo@student.com';
-  let password = 'password';
+  let email = '';
+  let password = '';
   let fullName = '';
   let errors: { [key: string]: string } = {};
   
@@ -158,14 +158,5 @@
         </button>
       </div>
     </form>
-    
-    <!-- Demo credentials hint -->
-    {#if isLogin}
-      <div class="bg-gray-800/50 border border-gray-700 rounded-lg p-4 text-center">
-        <p class="text-sm text-gray-400 mb-2">Demo Credentials:</p>
-        <p class="text-sm text-gray-300">Email: demo@student.com</p>
-        <p class="text-sm text-gray-300">Password: password</p>
-      </div>
-    {/if}
   </div>
 </div>
